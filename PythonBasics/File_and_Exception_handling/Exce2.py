@@ -3,7 +3,7 @@
 def process_order(item, quantity):
     try:
         price = {"masala": 20}[item]
-        if type(quantity = int):
+        if type(quantity) == int:
             cost = price * quantity
         print(f"total cost : {cost}")
     except KeyError:
