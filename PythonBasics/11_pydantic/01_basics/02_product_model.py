@@ -7,4 +7,7 @@ class Product(BaseModel):
     in_stock: bool = True
 
 product_1 = Product(id = 1, name="laptop", price= 999.99, in_stock = True)
-product_1 = Product(id = 2, name="mouse", price= 24.33, in_stock = True)
+product_2 = Product(id = 2, name="mouse", price= 24.33, in_stock = True)
+
+print(f"Product_1 {product_1}")
+print(f"Product_2 {product_2}")
