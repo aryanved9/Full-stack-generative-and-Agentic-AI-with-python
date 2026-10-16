@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 from openai import OpenAI
 import json
 import requests
+from pydantic import BaseModel, Field
+from typing import Optional
 
 load_dotenv()
 
@@ -56,7 +58,7 @@ SYSTEM_PROMPT= """
     {"step": "OUTPUT", "content": "14"}
     
     Examples 2:
-    User: what is the weather of delhi?
+    User: what is the current weather of delhi?
     {"step": "START", "content": "seems like user is interested in getting weather of delhi in India"}
     {"step": "PLAN", "content": "Lets see if we have any available tool from the list of available tools"}
     {"step": "PLAN", "content": "Great ! we have get_weather tool available for this query"}
@@ -65,6 +67,11 @@ SYSTEM_PROMPT= """
     {"step": "OBSERVE", "tool": "get_weather", "output": "the temp of delhi is cloudy with 20 C"}
     {"step": "OUTPUT", "content": "The current weather in delhi is 20 C with cloudy sky."}
 """
+class outputFormat(BaseModel):
+    step: str = Field(..., description="The Id of step. Example: START, PLAN, TOOL, OUTPUT etc...")
+    content: Optional[str] = Field(None, description="The optional string content for the step")
+    tool: Optional[str] = Field(None, description="The id of the tool to call.")
+    input: Optional[str] = Field(None, description="The input params for tool")
 
 message_history = [
     {"role":"system", "content": SYSTEM_PROMPT},
@@ -75,9 +82,9 @@ while True:
 
     while True:
         try:
-            response = client.chat.completions.create(
+            response = client.chat.completions.parse(
             model='gemini-3.5-flash-lite',
-            response_format={"type": "json_object"},
+            response_format=outputFormat,
             messages= message_history
         )
         except Exception as e:
@@ -88,30 +95,32 @@ while True:
         message_history.append({"role": "assistant", "content": raw_result})
         
         try:
-            parsed_result = json.loads(raw_result)
+            parsed_result = response.choices[0].message.parsed
         except json.JSONDecodeError:
             print("⚠️ Invalid JSON from model:", raw_result)
             break
-        
-        step = parsed_result.get("step")
-        content = parsed_result.get("content")
             
-        if step == "START":
-            print("🤓", content)
-        elif step == "PLAN":
-            print("🧠", content)
-        elif step == "TOOL":
-            tool_to_call = parsed_result.get("tool")
-            tool_input = parsed_result.get("input")
+        if parsed_result.step == "START":
+            print("🤓", parsed_result.content)
+            
+        elif parsed_result.step == "PLAN":
+            print("🧠", parsed_result.content)
+            
+        elif parsed_result.step == "TOOL":
+            tool_to_call = parsed_result.tool
+            tool_input = parsed_result.input
+            
             print(f"⚒️: {tool_to_call}({tool_input})")
             tool_response = available_tool[tool_to_call](tool_input)
             print(f"⚒️: {tool_to_call}({tool_input}) = {tool_response}")
+            
             message_history.append({"role":"user", "content": json.dumps(
                 {"step":"OBSERVE", "tool": tool_to_call, "output": tool_response }
             )})
             continue
-        elif step == "OUTPUT":
-            print("🔥", content)
+        
+        elif parsed_result.step == "OUTPUT":
+            print("🔥", parsed_result.content)
             break
             
         message_history.append({
