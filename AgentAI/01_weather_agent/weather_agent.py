@@ -14,6 +14,10 @@ client = OpenAI(
     base_url=os.getenv("BASE_URL")
 )
 
+def run_cmd(cmd: str):
+    result = os.system(cmd)
+    return result
+
 def get_weather(city: str):
     url = f"https://wttr.in/{city.lower()}?format=%c+%t"
     respose = requests.get(url)
@@ -24,7 +28,8 @@ def get_weather(city: str):
     raise ValueError("failed to fetch")
 
 available_tool = {
-    "get_weather": get_weather
+    "get_weather": get_weather,
+    "run_cmd": run_cmd
 }
 
 SYSTEM_PROMPT= """
@@ -46,6 +51,7 @@ SYSTEM_PROMPT= """
     
     Available Tools:
     -get_weather(city: str): Takes city name as input string and return weather information about the city
+    -run_cmd(cmd:str): Takes a system linux command as string and excutes the command on user's system and returns the output from that command.
     
     Examples 1:
     User: Hey, can you solve 2 + 3 * 20 / 5
